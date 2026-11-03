@@ -2,6 +2,7 @@
 package com.example.FuelFinder_Ai.controller;
 
 import com.example.FuelFinder_Ai.DTO.AiRequest;
+import com.example.FuelFinder_Ai.DTO.FuelRecommendation;
 import com.example.FuelFinder_Ai.service.FuelAiService;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,7 +16,7 @@ public class FuelAiController {
     }
 
     @PostMapping("/api/fuelfinder/askai")
-    public String askai(@RequestBody AiRequest request) {
+    public FuelRecommendation askai(@RequestBody AiRequest request) {
         return fuelAiService.askAi(
                 request.question(),
                 request.stationData()
