@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FuelFinder AI</title>
+</head>
+<body>
+
+<header>
+    <h1>FuelFinder AI</h1>
+    <p>Find den billigste tankstation i nærheden</p>
+</header>
+
+<main>
+    <section id="search">
+        <h2>Søg</h2>
+        <form id="searchForm">
+
+            <fieldset>
+                <legend>Brændstoftype</legend>
+                <label>
+                    <input type="radio" name="fuelType" value="benzin" checked>
+                    Benzin
+                </label>
+                <label>
+                    <input type="radio" name="fuelType" value="diesel">
+                    Diesel
+                </label>
+            </fieldset>
+
+            <label for="radius">
+                Søgeradius: <span id="radiusValue">10</span> km
+            </label>
+            <input type="range" id="radius" name="radius" min="1" max="50" value="10">
+
+            <button type="submit">Find tankstationer</button>
+
+        </form>
+    </section>
+
+    <section id="results">
+        <h2>Tankstationer</h2>
+        <p id="resultStatus">Tryk på "Find tankstationer" for at søge.</p>
+        <ul id="stationList"></ul>
+    </section>
+
+    <section id="ai">
+        <h2>Spørg AI'en</h2>
+    </section>
+</main>
+
+<script src="js/app.js"></script>
+</body>
+</html>
