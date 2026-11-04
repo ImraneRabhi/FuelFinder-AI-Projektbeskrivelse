@@ -3,13 +3,17 @@ const radiusInput = document.getElementById("radius");
 const radiusValue = document.getElementById("radiusValue");
 const resultStatus = document.getElementById("resultStatus");
 const stationList = document.getElementById("stationList");
+const aiForm = document.getElementById("aiForm");
+const aiQuestion = document.getElementById("aiQuestion");
+const aiAnswer = document.getElementById("aiAnswer");
 
-// Slideren: vis det valgte tal
+let lastStations = [];
+
 radiusInput.addEventListener("input", () => {
     radiusValue.textContent = radiusInput.value;
 });
 
-// Formularen: søg i stedet for at genindlæse siden
+
 searchForm.addEventListener("submit", (event) => {
     event.preventDefault();
     searchStations();
@@ -23,7 +27,7 @@ async function searchStations() {
     stationList.innerHTML = "";
 
     try {
-        const response = await fetch(`/api/fuelfinder/stations?fuelType=${fuelType}&radius=${radius}`);
+        const response = await fetch(`/api/fuelfinder/prices?fuelType=${fuelType}`);
         if (!response.ok) {
             throw new Error("Serverfejl: " + response.status);
         }
@@ -36,6 +40,7 @@ async function searchStations() {
 }
 
 function showStations(stations) {
+    lastStations = stations;
     if (stations.length === 0) {
         resultStatus.textContent = "Ingen stationer fundet. Prøv en større radius.";
         return;
@@ -44,8 +49,43 @@ function showStations(stations) {
     resultStatus.textContent = `${stations.length} stationer fundet – billigste først.`;
 
     stations.forEach((station) => {
+        const price = station.prices[0].price;
+
         const li = document.createElement("li");
-        li.textContent = `${station.name} – ${station.price} kr./l – ${station.distanceKm} km`;
+        li.textContent = `${station.name} – ${price} kr./l – ${station.address}`;
         stationList.appendChild(li);
     });
+}
+
+
+aiForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    askAi();
+});
+
+async function askAi() {
+    aiAnswer.textContent = "AI'en tænker...";
+
+
+    const stationData = lastStations.slice(0, 10).map((s) =>
+        `${s.name}, ${s.address}: ${s.prices[0].price} kr./l`
+    ).join("\n");
+
+    try {
+        const response = await fetch("/api/fuelfinder/askai", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                question: aiQuestion.value,
+                stationData: stationData
+            })
+        });
+        if (!response.ok) {
+            throw new Error("Serverfejl: " + response.status);
+        }
+        aiAnswer.textContent = await response.text();
+    } catch (error) {
+        aiAnswer.textContent = "AI'en kunne ikke svare lige nu. Prøv igen.";
+        console.error(error);
+    }
 }

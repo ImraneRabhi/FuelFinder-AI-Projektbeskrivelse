@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>FuelFinder AI</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
@@ -47,6 +48,12 @@
 
     <section id="ai">
         <h2>Spørg AI'en</h2>
+        <form id="aiForm">
+            <label for="aiQuestion">Dit spørgsmål</label>
+            <textarea id="aiQuestion" rows="3" placeholder="Fx: Hvilken station er billigst?" required></textarea>
+            <button type="submit">Spørg</button>
+        </form>
+        <p id="aiAnswer"></p>
     </section>
 </main>
 
