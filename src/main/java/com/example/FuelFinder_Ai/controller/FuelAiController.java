@@ -8,7 +8,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Stream;
 
 @RestController
 public class FuelAiController {
@@ -17,116 +20,214 @@ public class FuelAiController {
     private final FuelPriceService fuelPriceService;
     private final GeocodingService geocodingService;
     private final StationDistanceService distanceService;
+    private final RoutingService routingService;
+    private final FuelRecommendationService recommendationService;
 
     public FuelAiController(
             FuelAiService fuelAiService,
             FuelPriceService fuelPriceService,
             GeocodingService geocodingService,
-            StationDistanceService distanceService
+            StationDistanceService distanceService,
+            RoutingService routingService,
+            FuelRecommendationService recommendationService
     ) {
         this.fuelAiService = fuelAiService;
         this.fuelPriceService = fuelPriceService;
         this.geocodingService = geocodingService;
         this.distanceService = distanceService;
+        this.routingService = routingService;
+        this.recommendationService = recommendationService;
     }
 
     @PostMapping("/api/fuelfinder/askai")
-    public FuelRecommendation askai(@RequestBody AiRequest request) {
+    public FuelAiResponse askai(@RequestBody AiRequest request) {
 
-        // 1. Find koordinater ud fra brugerens adresse
-        Coordinates userLocation =
-                geocodingService.findCoordinates(request.location());
+        // 1. Validér input
+        if (request.radiusKm() == null
+                || !Double.isFinite(request.radiusKm())
+                || request.radiusKm() <= 0
+                || request.consumptionPer100Km() == null
+                || request.remainingFuelLiters() == null
+                || request.tankCapacityLiters() == null) {
 
-        // 2. Find brændstoftypen
-        FuelType fuelType = FuelType.from(request.fuelType());
-
-        // 3. Hent tankstationer og priser
-        List<Station> allStations =
-                fuelPriceService.getStations(fuelType);
-
-        // 4. Find de 5 nærmeste tankstationer
-        List<Station> nearestStations =
-                distanceService.findNearestStations(
-                        userLocation,
-                        allStations
-                );
-
-        if (nearestStations.isEmpty()) {
             throw new ResponseStatusException(
-                    HttpStatus.NOT_FOUND,
-                    "Ingen tankstationer med priser blev fundet."
+                    HttpStatus.BAD_REQUEST,
+                    "Radius og biloplysninger skal udfyldes korrekt."
             );
         }
 
-        // 5. Opret resultat med afstand og Google Maps-link
-        List<StationResult> stationResults =
-                nearestStations.stream()
-                        .map(station -> {
+        // 2. Find brugerens koordinater
+        Coordinates userLocation =
+                geocodingService.findCoordinates(request.location());
 
-                            double distance =
-                                    distanceService.calculateDistance(
-                                            userLocation.latitude(),
-                                            userLocation.longitude(),
-                                            station.latitude(),
-                                            station.longitude()
-                                    );
+        FuelType fuelType =
+                FuelType.from(request.fuelType());
 
-                            double roundedDistance =
-                                    Math.round(distance * 1000.0) / 1000.0;
+        List<Station> allStations =
+                fuelPriceService.getStations(fuelType);
 
-                            double price =
-                                    station.prices().get(0)
-                                            .price().doubleValue();
-
-                            String directionsUrl =
-                                    createDirectionsUrl(station);
-
-                            return new StationResult(
-                                    station.company() + " - " + station.name(),
-                                    station.address(),
-                                    price,
-                                    roundedDistance,
-                                    directionsUrl
-                            );
-                        })
-                        .toList();
-
-        // 6. Oplysninger til Mistral AI
-        String stationData =
-                "Brugerens område: " + request.location()
-                        + "\nBrændstoftype: " + fuelType
-                        + "\nBilens forbrug (L/100 km): "
-                        + request.consumptionPer100Km()
-                        + "\nBrændstof tilbage (liter): "
-                        + request.remainingFuelLiters()
-                        + "\nTankkapacitet (liter): "
-                        + request.tankCapacityLiters()
-                        + "\nAfstande er i fugleflugtslinje, ikke køreafstand."
-                        + "\nTankstationer:\n"
-                        + stationResults;
-
-        // 7. Hent anbefaling fra Mistral
-        FuelRecommendation aiResult =
-                fuelAiService.askAi(
-                        request.question(),
-                        stationData
+        // 3. Indledende geografisk filtrering
+        List<Station> candidates =
+                distanceService.prefilterStations(
+                        userLocation,
+                        allStations,
+                        request.radiusKm()
                 );
 
-        // 8. Returner AI-anbefaling og alle 5 stationer
-        return new FuelRecommendation(
-                aiResult.recommendedStation(),
-                aiResult.price(),
-                aiResult.distance(),
-                aiResult.totalSavings(),
-                aiResult.reason(),
-                stationResults
+        if (candidates.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Ingen tankstationer fundet i området."
+            );
+        }
+
+        // 4. Hent faktiske køreafstande
+        Map<Station, Double> drivingDistances =
+                routingService.getDrivingDistances(
+                        userLocation,
+                        candidates
+                );
+
+        List<Station> withinRadius =
+                distanceService.findStationsWithinRadius(
+                        drivingDistances,
+                        request.radiusKm()
+                );
+
+        if (withinRadius.isEmpty()) {
+            throw new ResponseStatusException(
+                    HttpStatus.NOT_FOUND,
+                    "Ingen tankstationer inden for køreradius."
+            );
+        }
+
+        // 5. Find de fem nærmeste
+        List<Station> nearest =
+                distanceService.findNearestStations(
+                        withinRadius,
+                        drivingDistances
+                );
+
+        // 6. Find de fem billigste
+        List<Station> cheapest =
+                distanceService.findCheapestStations(
+                        withinRadius,
+                        drivingDistances
+                );
+
+        List<StationResult> nearestResults =
+                nearest.stream()
+                        .map(station -> createStationResult(
+                                userLocation,
+                                station,
+                                drivingDistances.get(station)
+                        ))
+                        .toList();
+
+        List<StationResult> cheapestResults =
+                cheapest.stream()
+                        .map(station -> createStationResult(
+                                userLocation,
+                                station,
+                                drivingDistances.get(station)
+                        ))
+                        .toList();
+
+        // 7. Beregn anbefalingen ud fra ALLE stationer
+        // inden for radius, ikke kun top 5.
+        List<StationResult> allResults =
+                withinRadius.stream()
+                        .map(station -> createStationResult(
+                                userLocation,
+                                station,
+                                drivingDistances.get(station)
+                        ))
+                        .toList();
+
+        FuelRecommendationService.CalculationResult calculation;
+
+        try {
+            calculation = recommendationService.calculate(
+                    allResults,
+                    request.consumptionPer100Km(),
+                    request.remainingFuelLiters(),
+                    request.tankCapacityLiters()
+            );
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    e.getMessage()
+            );
+        }
+
+        // 8. Hvis ingen station kan nås
+        if (calculation.recommendedStation() == null) {
+            return new FuelAiResponse(
+                    null,
+                    null,
+                    null,
+                    null,
+                    calculation.explanation(),
+                    nearestResults,
+                    cheapestResults
+            );
+        }
+
+        // 9. Mistral forklarer Java-beregningen
+        String calculationData =
+                "Anbefalet station: "
+                        + calculation.recommendedStation()
+                        + "\nPris pr. liter: "
+                        + calculation.price()
+                        + "\nKøreafstand i km: "
+                        + calculation.distance()
+                        + "\nTeoretisk rækkevidde i km: "
+                        + calculation.rangeKm()
+                        + "\nEstimeret besparelse i kr.: "
+                        + calculation.totalSavings()
+                        + "\nBeregningsmetode: "
+                        + calculation.explanation();
+
+        String reason = fuelAiService.explainRecommendation(
+                request.question(),
+                calculationData
+        );
+
+        // 10. Returnér Java-beregningen og AI-forklaringen
+        return new FuelAiResponse(
+                calculation.recommendedStation(),
+                calculation.price(),
+                calculation.distance(),
+                calculation.totalSavings(),
+                reason,
+                nearestResults,
+                cheapestResults
         );
     }
 
-    // Opret Google Maps-link til tankstationen
-    private String createDirectionsUrl(Station station) {
+    private StationResult createStationResult(
+            Coordinates userLocation,
+            Station station,
+            double drivingDistanceKm
+    ) {
+        return new StationResult(
+                station.company() + " - " + station.name(),
+                station.address(),
+                station.prices().get(0).price().doubleValue(),
+                Math.round(drivingDistanceKm * 1000.0) / 1000.0,
+                createDirectionsUrl(userLocation, station)
+        );
+    }
 
+    private String createDirectionsUrl(
+            Coordinates userLocation,
+            Station station
+    ) {
         return "https://www.google.com/maps/dir/?api=1"
+                + "&origin="
+                + userLocation.latitude()
+                + "%2C"
+                + userLocation.longitude()
                 + "&destination="
                 + station.latitude()
                 + "%2C"

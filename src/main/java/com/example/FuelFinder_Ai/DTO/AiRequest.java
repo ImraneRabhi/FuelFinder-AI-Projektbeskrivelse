@@ -7,6 +7,7 @@ public record AiRequest(
         String fuelType,
         Double consumptionPer100Km,
         Double remainingFuelLiters,
-        Double tankCapacityLiters
+        Double tankCapacityLiters,
+        Double radiusKm
 ) {
 }
