@@ -8,6 +8,7 @@
           content="width=device-width, initial-scale=1.0">
 
     <title>FuelFinder AI</title>
+
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -42,6 +43,7 @@
 
             <!-- BRÆNDSTOFTYPE -->
             <fieldset>
+
                 <legend>Brændstoftype</legend>
 
                 <label>
@@ -62,40 +64,23 @@
                     >
                     Diesel
                 </label>
+
             </fieldset>
 
             <!-- SØGERADIUS -->
-            <fieldset class="radius-options">
-                <legend>Søgeradius</legend>
+            <label for="radius">
+                Søgeradius:
+                <span id="radiusValue">10</span> km
+            </label>
 
-                <label>
-                    <input
-                            type="radio"
-                            name="radius"
-                            value="5"
-                            checked
-                    >
-                    5 km
-                </label>
-
-                <label>
-                    <input
-                            type="radio"
-                            name="radius"
-                            value="10"
-                    >
-                    10 km
-                </label>
-
-                <label>
-                    <input
-                            type="radio"
-                            name="radius"
-                            value="20"
-                    >
-                    20 km
-                </label>
-            </fieldset>
+            <input
+                    type="range"
+                    id="radius"
+                    name="radius"
+                    min="1"
+                    max="50"
+                    value="10"
+            >
 
             <!-- BILENS BRÆNDSTOFFORBRUG -->
             <label for="consumptionPer100Km">

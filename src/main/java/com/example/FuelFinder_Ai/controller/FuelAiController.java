@@ -8,10 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.util.Comparator;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Stream;
 
 @RestController
 public class FuelAiController {
@@ -173,7 +172,14 @@ public class FuelAiController {
             );
         }
 
-        // 9. Mistral forklarer Java-beregningen
+        // 9. Formatér rækkevidden korrekt på dansk
+        String formattedRange = String.format(
+                Locale.forLanguageTag("da-DK"),
+                "%.2f",
+                calculation.rangeKm()
+        );
+
+        // 10. Mistral forklarer Java-beregningen
         String calculationData =
                 "Anbefalet station: "
                         + calculation.recommendedStation()
@@ -182,7 +188,7 @@ public class FuelAiController {
                         + "\nKøreafstand i km: "
                         + calculation.distance()
                         + "\nTeoretisk rækkevidde i km: "
-                        + calculation.rangeKm()
+                        + formattedRange
                         + "\nEstimeret besparelse i kr.: "
                         + calculation.totalSavings()
                         + "\nBeregningsmetode: "
@@ -193,7 +199,7 @@ public class FuelAiController {
                 calculationData
         );
 
-        // 10. Returnér Java-beregningen og AI-forklaringen
+        // 11. Returnér Java-beregningen og AI-forklaringen
         return new FuelAiResponse(
                 calculation.recommendedStation(),
                 calculation.price(),

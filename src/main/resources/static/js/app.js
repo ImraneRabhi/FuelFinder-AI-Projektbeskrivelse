@@ -1,5 +1,7 @@
 
 const searchForm = document.getElementById("searchForm");
+const radiusInput = document.getElementById("radius");
+const radiusValue = document.getElementById("radiusValue");
 const resultStatus = document.getElementById("resultStatus");
 const stationList = document.getElementById("stationList");
 
@@ -17,20 +19,10 @@ const tankCapacityInput =
 
 let lastResult = null;
 
-// Hent valgt søgeradius
-function getSelectedRadius() {
-    const selected = document.querySelector(
-        'input[name="radius"]:checked'
-    );
-
-    const radius = selected ? Number(selected.value) : 5;
-
-    if (![5, 10, 20].includes(radius)) {
-        throw new Error("Vælg en søgeradius på 5, 10 eller 20 km.");
-    }
-
-    return radius;
-}
+// Opdater søgeradius
+radiusInput.addEventListener("input", () => {
+    radiusValue.textContent = radiusInput.value;
+});
 
 // Hent valgt brændstoftype
 function getFuelType() {
@@ -41,30 +33,32 @@ function getFuelType() {
 
 // Byg request til Java-backend
 function buildRequest(question) {
+    if (!locationInput || !consumptionInput
+        || !remainingFuelInput || !tankCapacityInput) {
+        throw new Error(
+            "HTML mangler felter til adresse og biloplysninger."
+        );
+    }
+
     const location = locationInput.value.trim();
     const consumption = Number(consumptionInput.value);
     const remainingFuel = Number(remainingFuelInput.value);
     const tankCapacity = Number(tankCapacityInput.value);
+    const radius = Number(radiusInput.value);
 
     if (!location) {
         throw new Error("Indtast din adresse eller placering.");
     }
 
-    if (!consumptionInput.value ||
-        !Number.isFinite(consumption) ||
-        consumption <= 0) {
+    if (!consumptionInput.value || consumption <= 0) {
         throw new Error("Indtast et gyldigt brændstofforbrug.");
     }
 
-    if (!remainingFuelInput.value ||
-        !Number.isFinite(remainingFuel) ||
-        remainingFuel < 0) {
+    if (!remainingFuelInput.value || remainingFuel < 0) {
         throw new Error("Indtast resterende brændstof.");
     }
 
-    if (!tankCapacityInput.value ||
-        !Number.isFinite(tankCapacity) ||
-        tankCapacity <= 0) {
+    if (!tankCapacityInput.value || tankCapacity <= 0) {
         throw new Error("Indtast en gyldig tankkapacitet.");
     }
 
@@ -81,7 +75,7 @@ function buildRequest(question) {
         consumptionPer100Km: consumption,
         remainingFuelLiters: remainingFuel,
         tankCapacityLiters: tankCapacity,
-        radiusKm: getSelectedRadius()
+        radiusKm: radius
     };
 }
 
@@ -102,8 +96,7 @@ async function fetchRecommendation(question) {
 
         try {
             const error = await response.json();
-            message = error.message || error.detail ||
-                error.error || message;
+            message = error.message || error.error || message;
         } catch {
             // Behold den oprindelige fejlbesked
         }
@@ -119,7 +112,7 @@ searchForm.addEventListener("submit", async (event) => {
     event.preventDefault();
 
     resultStatus.textContent = "Finder tankstationer...";
-    stationList.replaceChildren();
+    stationList.innerHTML = "";
     aiAnswer.textContent = "";
     lastResult = null;
 
@@ -139,14 +132,12 @@ searchForm.addEventListener("submit", async (event) => {
 
 // Vis tankstationer
 function showStations(result) {
-    stationList.replaceChildren();
+    stationList.innerHTML = "";
 
-    // Matcher FuelRecommendation fra Java-backend
-    const stations = Array.isArray(result.stations)
-        ? result.stations
-        : [];
+    const nearest = result.nearestStations || [];
+    const cheapest = result.cheapestStations || [];
 
-    if (stations.length === 0) {
+    if (nearest.length === 0 && cheapest.length === 0) {
         resultStatus.textContent =
             "Ingen tankstationer fundet inden for søgeradius.";
         return;
@@ -157,12 +148,18 @@ function showStations(result) {
 
     addSectionHeading("De 5 nærmeste tankstationer");
 
-    stations.forEach((station, index) => {
+    nearest.forEach((station, index) => {
+        addStation(station, index + 1);
+    });
+
+    addSectionHeading("De 5 billigste tankstationer");
+
+    cheapest.forEach((station, index) => {
         addStation(station, index + 1);
     });
 }
 
-// Tilføj overskrift
+// Tilføj overskrift til listen
 function addSectionHeading(title) {
     const li = document.createElement("li");
     const heading = document.createElement("h3");
@@ -173,7 +170,7 @@ function addSectionHeading(title) {
     stationList.appendChild(li);
 }
 
-// Tilføj tankstation
+// Tilføj tankstation til listen
 function addStation(station, number) {
     const li = document.createElement("li");
 
@@ -238,7 +235,7 @@ aiForm.addEventListener("submit", async (event) => {
     }
 });
 
-// Vis AI-anbefaling
+// Vis AI-anbefalingen
 function showAiRecommendation(result) {
     aiAnswer.replaceChildren();
 
@@ -253,27 +250,13 @@ function showAiRecommendation(result) {
         "Anbefalet station: " + result.recommendedStation;
 
     const details = document.createElement("p");
-
-    const priceText = result.price == null
-        ? "Pris: Ukendt"
-        : "Pris: " + formatPrice(result.price) + " kr./liter";
-
-    const distanceText = result.distance == null
-        ? "Køreafstand: Ukendt"
-        : "Køreafstand: " +
-        formatDistance(result.distance) + " km";
-
-    const savingsText = result.totalSavings == null
-        ? "Estimeret besparelse: Ikke beregnet"
-        : "Estimeret besparelse: " +
-        formatPrice(result.totalSavings) + " kr.";
-
     details.textContent =
-        priceText + "\n" +
-        distanceText + "\n" +
-        savingsText;
-
-    details.style.whiteSpace = "pre-line";
+        "Pris: " + formatPrice(result.price) +
+        " kr./liter\n" +
+        "Køreafstand: " + formatDistance(result.distance) +
+        " km\n" +
+        "Estimeret besparelse: " +
+        formatPrice(result.totalSavings) + " kr.";
 
     const reason = document.createElement("p");
     reason.textContent = result.reason || "";
@@ -283,11 +266,9 @@ function showAiRecommendation(result) {
     aiAnswer.appendChild(reason);
 }
 
-// Formater pris
+// Formater pris til dansk format
 function formatPrice(value) {
-    if (value == null || !Number.isFinite(Number(value))) {
-        return "Ukendt";
-    }
+    if (value == null) return "Ukendt";
 
     return Number(value).toLocaleString("da-DK", {
         minimumFractionDigits: 2,
@@ -295,14 +276,12 @@ function formatPrice(value) {
     });
 }
 
-// Formater køreafstand
+// Formater afstand
 function formatDistance(value) {
-    if (value == null || !Number.isFinite(Number(value))) {
-        return "Ukendt";
-    }
+    if (value == null) return "Ukendt";
 
     return Number(value).toLocaleString("da-DK", {
         minimumFractionDigits: 1,
-        maximumFractionDigits: 3
+        maximumFractionDigits: 2
     });
 }

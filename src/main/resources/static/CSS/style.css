@@ -1,4 +1,5 @@
-{
+
+* {
     box-sizing: border-box;
 }
 
@@ -45,7 +46,6 @@ h2 {
     font-size: 1.2rem;
 }
 
-
 fieldset {
     border: 1px solid #ccc;
     border-radius: 6px;
@@ -84,7 +84,6 @@ button:hover {
     background: #17583a;
 }
 
-
 #stationList {
     list-style: none;
     padding: 0;
@@ -103,7 +102,6 @@ button:hover {
     white-space: pre-wrap;
     overflow-wrap: anywhere;
 }
-
 
 @media (min-width: 768px) {
     main {
