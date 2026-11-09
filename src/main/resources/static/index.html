@@ -1,55 +1,199 @@
+
 <!DOCTYPE html>
 <html lang="da">
+
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
     <title>FuelFinder AI</title>
+
+    <link rel="stylesheet" href="css/style.css">
 </head>
+
 <body>
 
 <header>
-    <h1>FuelFinder AI</h1>
-    <p>Find den billigste tankstation i nærheden</p>
+    <h1> FuelFinder AI</h1>
+    <p>Find den mest økonomiske tankstation i nærheden</p>
 </header>
 
 <main>
+
+    <!-- SØG EFTER TANKSTATIONER -->
     <section id="search">
-        <h2>Søg</h2>
+
+        <h2>Find tankstationer</h2>
+
         <form id="searchForm">
 
+            <!-- ADRESSE -->
+            <label for="location">
+                Din adresse eller placering
+            </label>
+
+            <input
+                    type="text"
+                    id="location"
+                    name="location"
+                    placeholder="Fx Brønshøj Torv, København"
+                    required
+            >
+
+            <!-- BRÆNDSTOFTYPE -->
             <fieldset>
+
                 <legend>Brændstoftype</legend>
+
                 <label>
-                    <input type="radio" name="fuelType" value="benzin" checked>
+                    <input
+                            type="radio"
+                            name="fuelType"
+                            value="benzin"
+                            checked
+                    >
                     Benzin
                 </label>
+
                 <label>
-                    <input type="radio" name="fuelType" value="diesel">
+                    <input
+                            type="radio"
+                            name="fuelType"
+                            value="diesel"
+                    >
                     Diesel
                 </label>
+
             </fieldset>
 
+            <!-- SØGERADIUS -->
             <label for="radius">
-                Søgeradius: <span id="radiusValue">10</span> km
+                Søgeradius:
+                <span id="radiusValue">10</span> km
             </label>
-            <input type="range" id="radius" name="radius" min="1" max="50" value="10">
 
-            <button type="submit">Find tankstationer</button>
+            <input
+                    type="range"
+                    id="radius"
+                    name="radius"
+                    min="1"
+                    max="50"
+                    value="10"
+            >
+
+            <!-- BILENS BRÆNDSTOFFORBRUG -->
+            <label for="consumptionPer100Km">
+                Bilens brændstofforbrug (L/100 km)
+            </label>
+
+            <input
+                    type="number"
+                    id="consumptionPer100Km"
+                    name="consumptionPer100Km"
+                    min="0.1"
+                    step="0.1"
+                    value="6.0"
+                    required
+            >
+
+            <!-- RESTERENDE BRÆNDSTOF -->
+            <label for="remainingFuelLiters">
+                Resterende brændstof (liter)
+            </label>
+
+            <input
+                    type="number"
+                    id="remainingFuelLiters"
+                    name="remainingFuelLiters"
+                    min="0"
+                    step="0.1"
+                    value="10"
+                    required
+            >
+
+            <!-- TANKKAPACITET -->
+            <label for="tankCapacityLiters">
+                Tankkapacitet (liter)
+            </label>
+
+            <input
+                    type="number"
+                    id="tankCapacityLiters"
+                    name="tankCapacityLiters"
+                    min="0.1"
+                    step="0.1"
+                    value="50"
+                    required
+            >
+
+            <!-- SØGEKNAP -->
+            <button type="submit">
+                Find tankstationer
+            </button>
 
         </form>
+
     </section>
 
+    <!-- RESULTATER -->
     <section id="results">
-        <h2>Tankstationer</h2>
-        <p id="resultStatus">Tryk på "Find tankstationer" for at søge.</p>
+
+        <h2>Tankstationer i nærheden</h2>
+
+        <p id="resultStatus" role="status">
+            Indtast dine oplysninger og tryk på
+            "Find tankstationer".
+        </p>
+
         <ul id="stationList"></ul>
+
     </section>
 
+    <!-- FUELFINDER AI -->
     <section id="ai">
-        <h2>Spørg AI'en</h2>
+
+        <h2> Spørg FuelFinder AI</h2>
+
+        <p>
+            Få en anbefaling baseret på
+            brændstofpris, køreafstand og
+            din bils brændstofforbrug.
+        </p>
+
+        <form id="aiForm">
+
+            <label for="aiQuestion">
+                Dit spørgsmål
+            </label>
+
+            <textarea
+                    id="aiQuestion"
+                    name="aiQuestion"
+                    rows="3"
+                    placeholder="Fx: Hvilken tankstation er mest økonomisk for mig?"
+                    required
+            ></textarea>
+
+            <button type="submit">
+                Spørg FuelFinder AI
+            </button>
+
+        </form>
+
+        <div id="aiAnswer"
+             role="status"
+             aria-live="polite"></div>
+
     </section>
+
 </main>
 
+<footer>
+    <p>FuelFinder AI – Smartere tankning</p>
+</footer>
+
 <script src="js/app.js"></script>
+
 </body>
 </html>

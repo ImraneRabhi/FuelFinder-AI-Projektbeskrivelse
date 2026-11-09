@@ -1,4 +1,4 @@
-package com.example.FuelFinder_Ai;
+package com.example.FuelFinder_Ai.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,7 +10,7 @@ import com.example.FuelFinder_Ai.DTO.fuelprices.FpCompany;
 import com.example.FuelFinder_Ai.DTO.fuelprices.FpStationInfo;
 import com.example.FuelFinder_Ai.DTO.fuelprices.FpStationResponse;
 import com.example.FuelFinder_Ai.client.FuelPricesClient;
-import com.example.FuelFinder_Ai.service.FuelPriceService;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
